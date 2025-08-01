@@ -8,22 +8,23 @@
 #include <iostream>
 
 std::optional<PROCESSENTRY32> FindProcess(const std::string& name) {
-	const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	struct Snapshot {
+		HANDLE handle;
+		Snapshot() : handle(CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)) {}
+		~Snapshot() {
+			CloseHandle(handle);
+		}
+	};
+	const Snapshot snapshot{};
 	PROCESSENTRY32 proc{};
 	proc.dwSize = sizeof(proc);
-
-	if (!Process32First(snapshot, &proc)) {
-		CloseHandle(snapshot);
-		return std::nullopt;
+	for (
+		bool success = Process32First(snapshot.handle, &proc);
+		success;
+		Process32Next(snapshot.handle, &proc)
+	) {
+		if (name == proc.szExeFile) return proc;
 	}
-	do {
-		if (name == proc.szExeFile) {
-			CloseHandle(snapshot);
-			return proc;
-		}
-	} while (Process32Next(snapshot, &proc));
-
-	CloseHandle(snapshot);
 	return std::nullopt;
 }
 
