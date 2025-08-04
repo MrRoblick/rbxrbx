@@ -12,7 +12,7 @@ include_directories(
 	"${CMAKE_SOURCE_DIR}/include/"
 )
 
-add_executable (rbxrbx "rbxrbx.cpp" "src/procmemory.cpp" "src/ntdll.cpp")
+add_executable (rbxrbx "rbxrbx.cpp" "src/procmemory.cpp" "src/ntdll.cpp" "include/rbxclient.h"  "include/Roblox/offsets.h" "include/Roblox/instance.h" "src/Roblox/instance.cpp" "include/Roblox/types.h" "include/External/client.h" "src/External/client.cpp" "include/processScanner.h" "src/processScanner.cpp" "include/Roblox/info.h" "src/internal.cpp" "src/external.cpp" "include/External/info.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET rbxrbx PROPERTY CXX_STANDARD 20)

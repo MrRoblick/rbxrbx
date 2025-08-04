@@ -1,8 +1,10 @@
 #pragma once
 #include <Windows.h>
-#include <string>
 #include <ntdll.h>
-
+#include <vector>
+#include <optional>
+#include <cstdint>
+#include <string>
 
 class Memory {
 private:
@@ -15,27 +17,31 @@ public:
 	~Memory();
 	
 	template<typename T>
-	bool Write(uintptr_t baseAddress, T* value, size_t size) {
+	bool Write(uintptr_t baseAddress, T* value, size_t size) const {
 		return NtWriteVirtualMemory(processHandle, reinterpret_cast<PVOID>(baseAddress), reinterpret_cast<PVOID>(value), size, nullptr);
 	}
 
 	template<typename T>
-	bool Read(uintptr_t baseAddress, T* value, size_t size) {
+	bool Read(uintptr_t baseAddress, T* value, size_t size) const {
 		return NtReadVirtualMemory(processHandle, reinterpret_cast<PVOID>(baseAddress), reinterpret_cast<PVOID>(value), size, nullptr);
 	}
 
-	uintptr_t Alloc(size_t size);
-	bool Free(uintptr_t baseAddress, size_t size);
+	uintptr_t Alloc(size_t size) const;
+	bool Free(const uintptr_t baseAddress, size_t size) const;
 
-	ULONG Protect(uintptr_t baseAddress, size_t size, ULONG newProtection);
+	ULONG Protect(const uintptr_t baseAddress, size_t size, const ULONG newProtection) const;
 
-	HANDLE Call(uintptr_t baseAddress, uintptr_t lpParameter);
+	HANDLE Call(const uintptr_t baseAddress, uintptr_t lpParameter) const;
 
-	bool LockMemory(uintptr_t baseAddress, size_t size);
-	bool UnlockMemory(uintptr_t baseAddress, size_t size);
+	bool LockMemory(const uintptr_t baseAddress, size_t size) const;
+	bool UnlockMemory(const uintptr_t baseAddress, size_t size) const;
 
-	uintptr_t GetRemoteProcAddress(const std::wstring& dllName, const std::string& funcName);
+	uintptr_t GetExecutableAddress() const;
+	uintptr_t GetRemoteProcAddress(const std::wstring& dllName, const std::string& funcName) const;
 
 	std::string GetProcessName() const;
 	DWORD GetProcessId() const;
+
+	std::vector<uintptr_t> FindAddresses(const std::string& patternStr) const;
+	std::vector<uintptr_t> FindAddresses(const uintptr_t value) const;
 };
