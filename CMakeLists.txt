@@ -12,10 +12,11 @@ include_directories(
 	"${CMAKE_SOURCE_DIR}/include/"
 )
 
-add_executable (rbxrbx "rbxrbx.cpp" "src/procmemory.cpp" "src/ntdll.cpp")
+
+add_executable (rbxrbx "rbxrbx.cpp" "src/procmemory.cpp" "src/ntdll.cpp" "include/rbxclient.h"  "include/Roblox/offsets.h" "include/Roblox/instance.h" "src/Roblox/instance.cpp" "include/Roblox/types.h" "include/External/client.h" "src/External/client.cpp" "include/processScanner.h" "src/processScanner.cpp" "include/Roblox/info.h" "src/internal.cpp" "src/external.cpp" "include/External/info.h" "include/Roblox/tools.h" "src/Roblox/tools.cpp")
+target_link_libraries(rbxrbx PRIVATE "${CMAKE_SOURCE_DIR}/lib/zstd_static.lib")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET rbxrbx PROPERTY CXX_STANDARD 20)
-  target_link_options(rbxrbx PRIVATE /INCREMENTAL:NO /GS- /Oy- /GL-)
 endif()
 
