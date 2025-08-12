@@ -6,19 +6,26 @@
 #include <stdexcept>
 #include <vector>
 #include <iostream>
-#include <processScanner.h>
-#include <locale>
-#include <codecvt>
-#include <algorithm>
-#include <thread>
-#include <mutex>
-#include <functional>
-#include <sstream>
 
-struct RegionToScan {
-	uintptr_t base;
-	size_t size;
-};
+std::optional<PROCESSENTRY32> FindProcess(const std::string& name) {
+	const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	PROCESSENTRY32 proc{};
+	proc.dwSize = sizeof(proc);
+
+	if (!Process32First(snapshot, &proc)) {
+		CloseHandle(snapshot);
+		return std::nullopt;
+	}
+	do {
+		if (name == proc.szExeFile) {
+			CloseHandle(snapshot);
+			return proc;
+		}
+	} while (Process32Next(snapshot, &proc));
+
+	CloseHandle(snapshot);
+	return std::nullopt;
+}
 
 Memory::Memory(const std::string& processName) : processName(processName){
 	std::optional<PROCESSENTRY32> proc = FindProcess(processName);
@@ -38,7 +45,7 @@ Memory::~Memory() {
 	CloseHandle(processHandle);
 }
 
-uintptr_t Memory::Alloc(size_t size) const {
+uintptr_t Memory::Alloc(size_t size) {
 	PVOID addr = 0;
 	NtAllocateVirtualMemory(
 		processHandle,
@@ -51,19 +58,18 @@ uintptr_t Memory::Alloc(size_t size) const {
 	return reinterpret_cast<uintptr_t>(addr);
 }
 
-bool Memory::Free(const uintptr_t baseAddress, size_t size) const {
+bool Memory::Free(uintptr_t baseAddress, size_t size) {
 	PVOID addr = reinterpret_cast<PVOID>(baseAddress);
 	return NtFreeVirtualMemory(processHandle, &addr, &size, MEM_FREE);
 }
 
-ULONG Memory::Protect(const uintptr_t baseAddress, size_t size, const ULONG newProtection) const {
+ULONG Memory::Protect(uintptr_t baseAddress, size_t size, ULONG newProtection) {
 	ULONG oldProtect = 0;
-	PVOID addr = reinterpret_cast<PVOID>(baseAddress);
-	NtProtectVirtualMemory(processHandle, &addr, reinterpret_cast<PSIZE_T>(&size), newProtection, &oldProtect);
+	VirtualProtectEx(processHandle, reinterpret_cast<LPVOID>(baseAddress), size, newProtection, &oldProtect);
 	return oldProtect;
 }
 
-HANDLE Memory::Call(const uintptr_t baseAddress, const uintptr_t lpParameter) const {
+HANDLE Memory::Call(uintptr_t baseAddress, uintptr_t lpParameter) {
 	HANDLE threadHandle;
 	NtCreateThreadEx(
 		&threadHandle,
@@ -89,7 +95,33 @@ DWORD Memory::GetProcessId() const{
 	return processId;
 }
 
-uintptr_t Memory::GetRemoteProcAddress(const std::wstring& dllName, const std::string& funcName) const {
+std::optional<MODULEENTRY32W> FindModuleW(DWORD processID, const std::wstring& name) {
+	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, processID);
+	if (snapshot == INVALID_HANDLE_VALUE) {
+		return std::nullopt;
+	}
+
+	MODULEENTRY32W module{};
+	module.dwSize = sizeof(module);
+
+	if (!Module32FirstW(snapshot, &module)) {
+		CloseHandle(snapshot);
+		return std::nullopt;
+	}
+
+	do {
+		//std::printf("%ws\n", module.szModule);
+		if (name == module.szModule) {
+			
+			CloseHandle(snapshot);
+			return module;
+		}
+	} while (Module32NextW(snapshot, &module));
+
+	CloseHandle(snapshot);
+	return std::nullopt;
+}
+uintptr_t Memory::GetRemoteProcAddress(const std::wstring& dllName, const std::string& funcName) {
 	std::optional<MODULEENTRY32W> mod = FindModuleW(processId, dllName);
 	if (!mod.has_value()) {
 		std::cerr << "Error: Module " << std::string(dllName.begin(), dllName.end()) << " not found\n";
@@ -170,159 +202,13 @@ uintptr_t Memory::GetRemoteProcAddress(const std::wstring& dllName, const std::s
 }
 
 
-bool Memory::LockMemory(const uintptr_t baseAddress, size_t size) const {
+bool Memory::LockMemory(uintptr_t baseAddress, size_t size) {
 	PVOID base = reinterpret_cast<PVOID>(baseAddress);
 	SIZE_T regionSize = size;
-	return NtLockVirtualMemory(processHandle, &base, reinterpret_cast<PSIZE_T>(&size), 1);
+	return NtLockVirtualMemory(processHandle, &base, reinterpret_cast<PSIZE_T>(&size), 0);
 }
-bool Memory::UnlockMemory(const uintptr_t baseAddress, size_t size) const {
+bool Memory::UnlockMemory(uintptr_t baseAddress, size_t size) {
 	PVOID base = reinterpret_cast<PVOID>(baseAddress);
 	SIZE_T regionSize = size;
-	return NtUnlockVirtualMemory(processHandle, &base, reinterpret_cast<PSIZE_T>(&size), 1);
-}
-
-uintptr_t Memory::GetExecutableAddress() const
-{
-	std::wstring_convert<std::codecvt_utf8<wchar_t>> conv;
-	const std::wstring wstr = conv.from_bytes(processName);
-
-	const std::optional<MODULEENTRY32W> mod = FindModuleW(processId, wstr);
-
-	return mod.has_value() ? reinterpret_cast<uintptr_t>((*mod).modBaseAddr) : 0;
-}
-
-std::vector<std::optional<byte>> ParsePattern(const std::string& patternStr) {
-	std::vector<std::optional<byte>> pattern;
-	std::stringstream ss(patternStr);
-	std::string token;
-
-	while (ss >> token) {
-		if (token == "?" || token == "??") {
-			pattern.push_back(std::nullopt);
-		}
-		else {
-			try {
-				pattern.push_back(static_cast<byte>(std::stoi(token, nullptr, 16)));
-			}
-			catch (const std::invalid_argument& e) {
-				std::cerr << "Invalid pattern token: " << token << std::endl;
-				return {}; // Возвращаем пустой вектор при ошибке
-			}
-			catch (const std::out_of_range& e) {
-				std::cerr << "Pattern token out of range: " << token << std::endl;
-				return {};
-			}
-		}
-	}
-	return pattern;
-}
-
-std::vector<size_t> SearchInBuffer(const std::vector<byte>& buffer, const std::vector<std::optional<byte>>& pattern, SIZE_T bufferSize) {
-	std::vector<size_t> offsets;
-	const size_t patternSize = pattern.size();
-
-	if (bufferSize < patternSize) {
-		return offsets;
-	}
-
-	for (size_t i = 0; i <= bufferSize - patternSize; ++i) {
-		bool match = true;
-		for (size_t j = 0; j < patternSize; ++j) {
-			if (pattern[j].has_value() && pattern[j].value() != buffer[i + j]) {
-				match = false;
-				break;
-			}
-		}
-		if (match) {
-			offsets.push_back(i);
-		}
-	}
-	return offsets;
-}
-
-std::vector<size_t> SearchInBuffer(const std::vector<byte>& buffer, const std::vector<byte>& pattern, SIZE_T bufferSize) {
-	std::vector<size_t> offsets;
-	const size_t patternSize = pattern.size();
-
-	if (bufferSize < patternSize) {
-		return offsets;
-	}
-
-	for (size_t i = 0; i <= bufferSize - patternSize; ++i) {
-		bool match = true;
-		for (size_t j = 0; j < patternSize; ++j) {
-			if (pattern[j] != buffer[i + j]) {
-				match = false;
-				break;
-			}
-		}
-		if (match) {
-			offsets.push_back(i);
-		}
-	}
-	return offsets;
-}
-
-std::vector<uintptr_t> Memory::FindAddresses(const std::string& patternStr) const {
-	const auto pattern = ParsePattern(patternStr);
-	if (pattern.empty()) {
-		return {};
-	}
-
-	std::vector<uintptr_t> results;
-	uintptr_t currentAddr = 0;
-	MEMORY_BASIC_INFORMATION mbi;
-
-	while (VirtualQueryEx(processHandle, reinterpret_cast<LPCVOID>(currentAddr), &mbi, sizeof(mbi))) {
-		const bool isReadable = (mbi.State == MEM_COMMIT) &&
-			(mbi.Protect & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) &&
-			!(mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS));
-
-		if (isReadable && mbi.RegionSize >= pattern.size()) {
-			std::vector<byte> buffer(mbi.RegionSize);
-			SIZE_T bytesRead;
-			if (ReadProcessMemory(processHandle, mbi.BaseAddress, buffer.data(), mbi.RegionSize, &bytesRead)) {
-				auto offsets = SearchInBuffer(buffer, pattern, bytesRead);
-				for (const auto& offset : offsets) {
-					results.push_back(reinterpret_cast<uintptr_t>(mbi.BaseAddress) + offset);
-				}
-			}
-		}
-
-		currentAddr = reinterpret_cast<uintptr_t>(mbi.BaseAddress) + mbi.RegionSize;
-	}
-
-	return results;
-}
-
-std::vector<uintptr_t> Memory::FindAddresses(const uintptr_t value) const {
-	std::vector<byte> pattern;
-	pattern.resize(sizeof(value));
-
-	std::memcpy(pattern.data(), &value, sizeof(value));
-
-	std::vector<uintptr_t> results;
-	uintptr_t currentAddr = 0;
-	MEMORY_BASIC_INFORMATION mbi;
-
-	while (VirtualQueryEx(processHandle, reinterpret_cast<LPCVOID>(currentAddr), &mbi, sizeof(mbi))) {
-		const bool isReadable = (mbi.State == MEM_COMMIT) &&
-			(mbi.Protect & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) &&
-			!(mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS));
-
-		if (isReadable && mbi.RegionSize >= pattern.size()) {
-			std::vector<byte> buffer(mbi.RegionSize);
-			SIZE_T bytesRead;
-			if (ReadProcessMemory(processHandle, mbi.BaseAddress, buffer.data(), mbi.RegionSize, &bytesRead)) {
-				auto offsets = SearchInBuffer(buffer, pattern, bytesRead);
-				for (const auto& offset : offsets) {
-					results.push_back(reinterpret_cast<uintptr_t>(mbi.BaseAddress) + offset);
-				}
-			}
-		}
-
-		currentAddr = reinterpret_cast<uintptr_t>(mbi.BaseAddress) + mbi.RegionSize;
-	}
-
-	return results;
+	return NtUnlockVirtualMemory(processHandle, &base, reinterpret_cast<PSIZE_T>(&size), 0);
 }
