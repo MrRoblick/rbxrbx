@@ -15,6 +15,7 @@ public:
 
 	std::optional<Instance> GetDataModel() const;
 	std::optional<ModuleScript> GetPlayerListManager() const;
+	uintptr_t FindBuffer() const;
 
 	Memory* GetMemory() const;
 	std::vector<uintptr_t> FindAddresses(const std::string& pattern) const;

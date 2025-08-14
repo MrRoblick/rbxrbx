@@ -6,8 +6,6 @@
 #include <iostream>
 #include <vector>
 
-
-
 inline std::string ReadRobloxString(Memory* memory, const uintptr_t address) {
 	uint64_t length;
 	memory->Read(address + RobloxOffsets::RobloxString::Length, &length, sizeof(length));
@@ -161,34 +159,22 @@ void Humanoid::SetWalkSpeed(float speed) const {
 	memory->Write(address + RobloxOffsets::Humanoid::WalkSpeedCheck, &speed, sizeof(speed));
 }
 
-/*
-
-class LocalScript : public Instance {
-public:
-	explicit LocalScript(Memory* mem, uintptr_t address);
-	std::vector<byte> GetBytecode() const;
-	std::vector<byte> GetBytecodeHash() const;
-};
-*/
-
-std::vector<byte> LocalScript::GetBytecode() const {
-	return std::vector<byte>{};
-}
-std::vector<byte> LocalScript::GetBytecodeCompressed() const {
+std::string LocalScript::GetBytecode() const {
 	uintptr_t bytecodeContainerPtr;
 	memory->Read(address + RobloxOffsets::LocalScript::LocalScriptByteCode, &bytecodeContainerPtr, sizeof(bytecodeContainerPtr));
 
 	uint32_t bytecodeSize;
 	memory->Read(bytecodeContainerPtr + RobloxOffsets::Bytecode::BytecodeSize, &bytecodeSize, sizeof(bytecodeSize));
 
-	std::vector<byte> bytecodeCompressed;
-	bytecodeCompressed.resize(bytecodeSize);
+	
+
+	std::string bytecodeCompressed(bytecodeSize, '\0');
 
 	uintptr_t bytecodePtr;
 	memory->Read(bytecodeContainerPtr + RobloxOffsets::Bytecode::BytecodePointer, &bytecodePtr, sizeof(bytecodePtr));
 
-	memory->Read(bytecodePtr, bytecodeCompressed.data(), bytecodeCompressed.size());
-
+	memory->Read(bytecodePtr, bytecodeCompressed.data(), bytecodeSize);
+	
 	return bytecodeCompressed;
 }
 std::string LocalScript::GetBytecodeHash() const {
@@ -199,10 +185,6 @@ std::string LocalScript::GetBytecodeHash() const {
 	memory->Read(hashPtr, hash.data(), BYTECODE_HASH_SIZE);
 
 	return hash;
-}
-
-void LocalScript::SetBytecode(const uintptr_t safePageAddress) const {
-
 }
 
 void Instance::GetDescendantsRecursive(std::vector<Instance>& descendants) const {
@@ -220,12 +202,8 @@ std::vector<Instance> Instance::GetDescendants() const {
 	return descendants;
 }
 
-void LocalScript::SetBytecodeCompressed(uintptr_t safePageAddress, uint32_t bytecodeSize) const {
-	uintptr_t bytecodeContainerPtr;
-	memory->Read(address + RobloxOffsets::LocalScript::LocalScriptByteCode, &bytecodeContainerPtr, sizeof(bytecodeContainerPtr));
-
-	memory->Write(bytecodeContainerPtr + RobloxOffsets::Bytecode::BytecodeSize, &bytecodeSize, sizeof(bytecodeSize));
-	memory->Write(bytecodeContainerPtr + RobloxOffsets::Bytecode::BytecodePointer, &safePageAddress, sizeof(safePageAddress));
+void LocalScript::SetBytecodePointer(uintptr_t safePageAddress) const {
+	memory->Write(address + RobloxOffsets::LocalScript::LocalScriptByteCode, &safePageAddress, sizeof(safePageAddress));
 }
 
 void LocalScript::SetBytecodeHash(uintptr_t safePageAddress) const {
@@ -247,16 +225,8 @@ void LocalScript::SetEnabled(bool enabled) const {
 	//memory->Write(address + 0x165, &state, sizeof(state));
 	//memory->Write(address + 0x18d, &state, sizeof(state));
 }
-/*
-explicit ModuleScript(Memory* mem, const uintptr_t address);
-	std::vector<byte> GetBytecodeCompressed() const;
-	std::string GetBytecodeHash() const;
 
-	void SetBytecodeCompressed(uintptr_t safePageAddress, uint32_t bytecodeSize) const;
-	void SetBytecodeHash(uintptr_t safePageAddress) const;
-*/
-
-std::string ModuleScript::GetBytecodeCompressed() const {
+std::string ModuleScript::GetBytecode() const {
 	uintptr_t bytecodeContainerPtr;
 	memory->Read(address + RobloxOffsets::ModuleScript::ModuleScriptByteCode, &bytecodeContainerPtr, sizeof(bytecodeContainerPtr));
 
@@ -282,25 +252,14 @@ std::string ModuleScript::GetBytecodeHash() const {
 	return hash;
 }
 
-void ModuleScript::SetBytecodeCompressed(uintptr_t safePageAddress, uint32_t bytecodeSize) const {
-	uintptr_t zero = 0;
-
-	uintptr_t bytecodeContainerPtr;
-	memory->Read(address + RobloxOffsets::ModuleScript::ModuleScriptByteCode, &bytecodeContainerPtr, sizeof(bytecodeContainerPtr));
-
-	memory->Write(bytecodeContainerPtr + RobloxOffsets::Bytecode::BytecodePointer, &safePageAddress, sizeof(safePageAddress));
-	//memory->Write(bytecodeContainerPtr + 0x18, &zero, sizeof(zero));
-	memory->Write(bytecodeContainerPtr + RobloxOffsets::Bytecode::BytecodeSize, &bytecodeSize, sizeof(bytecodeSize));
-	//memory->Write(bytecodeContainerPtr + 0x28, &bytecodeSize2, sizeof(bytecodeSize2));
+void ModuleScript::SetBytecodePointer(uintptr_t safePageAddress) const {
+	memory->Write(address + RobloxOffsets::ModuleScript::ModuleScriptByteCode, &safePageAddress, sizeof(safePageAddress));
 }
 
 
 void ModuleScript::SetBytecodeHash(uintptr_t safePageAddress) const {
 	memory->Write(address + RobloxOffsets::ModuleScript::ModuleScriptHash, &safePageAddress, sizeof(safePageAddress));
 }
-
-
-
 
 uintptr_t Instance::GetSelf() const {
 	uintptr_t self;
@@ -312,7 +271,10 @@ void Instance::SetSelf(uintptr_t address) const {
 }
 
 void ScriptContext::RequireBypass() const {
-	bool bypass = true;
+	uint32_t bypass = 1;
+	std::cout << "Require Bypass, address: " << std::hex << address << std::endl;
+	std::cout << "Require offset, address: " << std::hex << RobloxOffsets::ScriptContext::RequireBypass << std::endl;
+	std::cout << "Final, address: " << std::hex << address + RobloxOffsets::ScriptContext::RequireBypass << std::endl;
 	memory->Write(address + RobloxOffsets::ScriptContext::RequireBypass, &bypass, sizeof(bypass));
 }
 
@@ -341,6 +303,14 @@ void Instance::SetReferencePointer(uintptr_t safePageAddress) const {
 }
 void Instance::SetClassDescriptorPointer(uintptr_t safePageAddress) const {
 	memory->Write(address + RobloxOffsets::Instance::ClassDescriptor, &safePageAddress, sizeof(safePageAddress));
+}
+
+
+void ModuleScript::RemoveCoreDetections() const {
+	uint32_t flags = 0b00000100; //0x100000000;
+	uint32_t isCore = 1;
+	memory->Write(address + RobloxOffsets::ModuleScript::ModuleDetection, &flags, sizeof(flags));
+	memory->Write(address + RobloxOffsets::ModuleScript::IsCoreScript, &isCore, sizeof(isCore));
 }
 
 /*

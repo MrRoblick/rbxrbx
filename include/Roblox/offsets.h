@@ -20,18 +20,20 @@ namespace RobloxOffsets {
 	namespace ModuleScript {
 		inline constexpr uintptr_t ModuleScriptByteCode = 0x158;
 		inline constexpr uintptr_t ModuleScriptHash = 0x180;
+		inline constexpr uintptr_t IsCoreScript = 0x1a0;
+		inline constexpr uintptr_t ModuleDetection = 0x1a0 - 0x4;
 	}
 	namespace Core {
-		inline constexpr uintptr_t TaskSchedulerPointer = 0x69A7320;
+		inline constexpr uintptr_t TaskSchedulerPointer = 0x6F42320;
 		inline constexpr uintptr_t ViewMatrix = 0x4B0;
-		inline constexpr uintptr_t ScriptContext = 0x3C0;
+		inline constexpr uintptr_t ScriptContext = 0x3D0;
 
-		inline constexpr uintptr_t FakeDataModelPointer = 0x6ED6E38;
+		inline constexpr uintptr_t FakeDataModelPointer = 0x6E72138;
 		inline constexpr uintptr_t FakeDataModelToDataModel = 0x1C0;
 	}
 	namespace Workspace {
-		inline constexpr uintptr_t Gravity = 0x968;
-		inline constexpr uintptr_t Camera = 0x428;
+		inline constexpr uintptr_t Gravity = 0x998;
+		inline constexpr uintptr_t Camera = 0x450;
 	}
 	namespace Lighting {
 		inline constexpr uintptr_t ClockTime = 0x1C0;
@@ -40,12 +42,12 @@ namespace RobloxOffsets {
 		inline constexpr uintptr_t Workspace = 0x180;
 		inline constexpr uintptr_t PlaceId = 0x1A0;
 		inline constexpr uintptr_t CreatorId = 0x190;
-		inline constexpr uintptr_t GameLoaded = 0x680;
+		inline constexpr uintptr_t GameLoaded = 0x6A0;
 	}
 	namespace Camera {
-		inline constexpr uintptr_t ViewPortSize = 0x300;
-		inline constexpr uintptr_t Position = 0x124;
-		inline constexpr uintptr_t Rotation = 0x100;
+		inline constexpr uintptr_t ViewportSize = 0x2F0;
+		inline constexpr uintptr_t Position = 0x14C;
+		inline constexpr uintptr_t Rotation = 0x130;
 		inline constexpr uintptr_t FOV = 0x168;
 
 	}
@@ -56,7 +58,7 @@ namespace RobloxOffsets {
 		inline constexpr uintptr_t LocalPlayer = 0x128;
 	}
 	namespace Player {
-		inline constexpr uintptr_t UserId = 0x288;
+		inline constexpr uintptr_t UserId = 0x270;
 		inline constexpr uintptr_t Character = 0x328;
 	}
 	namespace Humanoid {
@@ -71,8 +73,8 @@ namespace RobloxOffsets {
 	}
 	namespace BasePart {
 		inline constexpr uintptr_t Position = 0x14C;
-		inline constexpr uintptr_t CanCollide = 0x26A;
-		inline constexpr uintptr_t CanTouch = 0x26B;
+		inline constexpr uintptr_t CanCollide = 0x301;
+		inline constexpr uintptr_t CanTouch = 0x301;
 		inline constexpr uintptr_t Velocity = 0x158;
 		inline constexpr uintptr_t Transparency = 0xF8;
 		
@@ -81,10 +83,10 @@ namespace RobloxOffsets {
 		inline constexpr uintptr_t Self = 0x8;
 		inline constexpr uintptr_t Reference = 0x10;
 
-		inline constexpr uintptr_t Parent = 0x50;
-		inline constexpr uintptr_t Name = 0x78;
+		inline constexpr uintptr_t Parent = 0x58;
+		inline constexpr uintptr_t Name = 0x88;
 
-		inline constexpr uintptr_t Children = 0x80;
+		inline constexpr uintptr_t Children = 0x68;
 		inline constexpr uintptr_t ChildrenEnd = 0x8;
 		inline constexpr uintptr_t TagList = 0x120;
 

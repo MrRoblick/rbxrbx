@@ -42,6 +42,16 @@ std::vector<uintptr_t> ExternalClient::FindAddresses(const std::string& pattern)
 	return memory->FindAddresses(pattern);
 }
 
+uintptr_t ExternalClient::FindBuffer() const {
+	const std::vector<uintptr_t> addresses = memory->FindAddresses(bufferSignature);
+	if (addresses.size() <= 0 || addresses.size() > 1) {
+		std::cerr << "[ERROR] Buffer not found or multiple addresses found!" << std::endl;
+		return 0;
+	}
+	const uintptr_t addr = addresses[0];
+	return addr;
+}
+
 std::optional<ModuleScript> ExternalClient::GetPlayerListManager() const {
 	const std::vector<uintptr_t> addresses = memory->FindAddresses(playerListManagerBytecode);
 	if (addresses.size() <= 0 || addresses.size() > 1) {

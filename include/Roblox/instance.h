@@ -98,12 +98,12 @@ public:
 class ModuleScript : public Instance {
 public:
 	explicit ModuleScript(Memory* mem, const uintptr_t address);
-	std::string GetBytecodeCompressed() const;
-	//uint32_t GetBytecodeSize2() const;
+	std::string GetBytecode() const;
 	std::string GetBytecodeHash() const;
 
-	void SetBytecodeCompressed(uintptr_t safePageAddress, uint32_t bytecodeSize) const;
+	void SetBytecodePointer(uintptr_t safePageAddress) const;
 	void SetBytecodeHash(uintptr_t safePageAddress) const;
+	void RemoveCoreDetections() const;
 
 	//void RemoveCoreDetections() const;
 };
@@ -111,14 +111,13 @@ public:
 class LocalScript : public Instance {
 public:
 	explicit LocalScript(Memory* mem, const uintptr_t address);
-	std::vector<byte> GetBytecode() const;
-	std::vector<byte> GetBytecodeCompressed() const;
+	std::string GetBytecode() const;
 	std::string GetBytecodeHash() const;
+
 	bool GetEnabled() const;
 	void SetEnabled(bool enabled) const;
 
-	void SetBytecode(uintptr_t safePageAddress) const;
-	void SetBytecodeCompressed(uintptr_t safePageAddress, uint32_t bytecodeSize) const;
+	void SetBytecodePointer(uintptr_t safePageAddress) const;
 	void SetBytecodeHash(uintptr_t safePageAddress) const;
 };
 
